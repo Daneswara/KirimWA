@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "299102368863",
+    "firebase_url": "https://kirimwa-b2ab7.firebaseio.com",
+    "project_id": "kirimwa-b2ab7",
+    "storage_bucket": "kirimwa-b2ab7.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:299102368863:android:ee98d36f2713ffb8",
+        "android_client_info": {
+          "package_name": "com.daneswara.kirimwa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "299102368863-fa7ae0uf5qle94ef4g5mtusnufmp8jgf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.daneswara.kirimwa",
+            "certificate_hash": "0f8ae30e602d849ca6dcc21c57b563ae9d30841a"
+          }
+        },
+        {
+          "client_id": "299102368863-nqklnodldnumceri6omu2fi43nlpkdkc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvtE1BcHeIwP3KLK0qzFCkypC4ly61M2w"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "299102368863-nqklnodldnumceri6omu2fi43nlpkdkc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

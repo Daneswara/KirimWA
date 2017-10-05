@@ -3,11 +3,13 @@ package com.daneswara.kirimwa;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.mega4tech.whatsappapilibrary.WhatsappApi;
 import com.mega4tech.whatsappapilibrary.exception.WhatsappNotInstalledException;
 import com.mega4tech.whatsappapilibrary.liseteners.SendMessageListener;
@@ -19,8 +21,9 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class Home extends AppCompatActivity {
+    private static final String TAG = "FCM Service";
     EditText tujuan, pesan;
-    Button kirim;
+    Button kirim, sub, unsub;
     List<WContact> mReceivers;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +40,7 @@ public class Home extends AppCompatActivity {
             return;
         }
 
+
         setContentView(R.layout.activity_home);
 
         mReceivers = new LinkedList<>();
@@ -44,6 +48,24 @@ public class Home extends AppCompatActivity {
         tujuan = (EditText) findViewById(R.id.nohp);
         pesan = (EditText) findViewById(R.id.pesan);
         kirim = (Button) findViewById(R.id.kirim);
+        sub = (Button) findViewById(R.id.subscribe);
+        unsub = (Button) findViewById(R.id.unsubscribe);
+
+        sub.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                FirebaseMessaging.getInstance().subscribeToTopic("news");
+                Log.d(TAG, "Subscribed to news topic");
+            }
+        });
+
+        unsub.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                FirebaseMessaging.getInstance().unsubscribeFromTopic("news");
+                Log.d(TAG, "Unsubscribed to news topic");
+            }
+        });
 
         kirim.setOnClickListener(new View.OnClickListener() {
             @Override

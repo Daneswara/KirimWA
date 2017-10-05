@@ -27,5 +27,11 @@ dependencies {
     compile 'com.android.support:appcompat-v7:26.+'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     compile 'com.github.omegaes:Whatsapp-API:1.0.2'
+    compile 'com.google.firebase:firebase-core:9.2.0' // this line must be included to integrate with Firebase
+    compile 'com.google.firebase:firebase-messaging:9.2.0' // this line must be included to use FCM
+    compile 'com.google.android.gms:play-services-location:9.2.0'
+    compile 'com.google.android.gms:play-services-places:9.2.0'
     testCompile 'junit:junit:4.12'
 }
+
+apply plugin: 'com.google.gms.google-services'

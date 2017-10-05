@@ -24,5 +24,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Kirim"/>
+    <Button
+        android:id="@+id/subscribe"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Subscribe to NEWS"/>
+    <Button
+        android:id="@+id/unsubscribe"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="UNSubscribe to NEWS"/>
 
 </LinearLayout>
