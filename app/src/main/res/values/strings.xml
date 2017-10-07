@@ -1,3 +1,8 @@
 <resources>
-    <string name="app_name">KirimWA</string>
+    <string name="app_name">Kirim WA</string>
+    <string name="title_activity_main">Kirim WA</string>
+    <string name="title_home">Kontak</string>
+    <string name="title_dashboard">Bot</string>
+    <string name="title_notifications">Pengaturan</string>
+    <string name="firebase_status_fmt">Firebase User: %s</string>
 </resources>
