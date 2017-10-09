@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:orientation="vertical"
+    tools:context="com.daneswara.kirimwa.DetailKontak">
+
+    <android.support.design.widget.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <EditText
+            android:id="@+id/input_nama"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:editable="false"
+            android:inputType="none"
+            android:hint="Name" />
+
+    </android.support.design.widget.TextInputLayout>
+
+    <android.support.design.widget.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <EditText
+            android:id="@+id/input_nomer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:editable="false"
+            android:inputType="none"
+            android:hint="Phone Number" />
+
+    </android.support.design.widget.TextInputLayout>
+
+
+<RadioGroup
+    android:id="@+id/input_status"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <RadioButton
+        android:id="@+id/calonpembeli"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Calon Pembeli"/>
+    <RadioButton
+        android:id="@+id/pembeli"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Pembeli"/>
+    <RadioButton
+        android:id="@+id/pelanggan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Pelanggan"/>
+</RadioGroup>
+
+
+
+
+</LinearLayout>

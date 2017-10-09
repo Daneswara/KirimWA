@@ -2,8 +2,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/action_item_logout"
+        android:id="@+id/action_item_save"
         android:title="Camera"
-        android:icon="@drawable/ic_exit_to_app_white_24dp"
+        android:icon="@drawable/ic_save"
         app:showAsAction="always"/>
 </menu>

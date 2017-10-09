@@ -1,6 +1,7 @@
 package com.daneswara.kirimwa.adapter;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.media.Image;
 import android.view.Gravity;
@@ -14,6 +15,7 @@ import android.widget.TextView;
 
 import com.amulyakhare.textdrawable.TextDrawable;
 import com.amulyakhare.textdrawable.util.ColorGenerator;
+import com.daneswara.kirimwa.DetailKontak;
 import com.daneswara.kirimwa.R;
 import com.daneswara.kirimwa.object.Kontak;
 import com.daneswara.kirimwa.object.KontakDB;
@@ -31,8 +33,10 @@ public class AdapterKontak extends BaseAdapter {
     // Keep all Images in array
     public String[] mThumbIds;
     ColorGenerator generator;
+    List<Kontak> daftarkontak;
     // Constructor
     public AdapterKontak(Context c, List<Kontak> daftarkontak) {
+        this.daftarkontak = daftarkontak;
         generator = ColorGenerator.MATERIAL;
         mContext = c;
         this.nama = new String[daftarkontak.size()];
@@ -72,12 +76,7 @@ public class AdapterKontak extends BaseAdapter {
             lin = new LinearLayout(mContext);
             lin.addView(imageView);
             lin.addView(teks);
-            lin.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
 
-                }
-            });
         } else {
             lin = (LinearLayout) convertView;
             imageView = (ImageView) lin.getChildAt(0);
@@ -92,6 +91,16 @@ public class AdapterKontak extends BaseAdapter {
                 .buildRound(String.valueOf(nama[position].charAt(0)), generator.getColor(nama[position].charAt(0)));
         imageView.setImageDrawable(drawable);
         teks.setText(nama[position]);
+        lin.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent detail = new Intent(mContext, DetailKontak.class);
+                detail.putExtra("nama", daftarkontak.get(position).nama);
+                detail.putExtra("nomer", daftarkontak.get(position).nomer);
+                detail.putExtra("status", daftarkontak.get(position).status);
+                mContext.startActivity(detail);
+            }
+        });
         lin.setOrientation(LinearLayout.HORIZONTAL);
         return lin;
     }

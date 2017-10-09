@@ -2,6 +2,7 @@ package com.daneswara.kirimwa;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v7.app.AppCompatActivity;
@@ -51,7 +52,9 @@ public class MainActivity extends AppCompatActivity {
     List<Kontak> datakontak;
     ExpandableHeightGridView gridView;
     private static final String TAG = "FCM Service";
-
+    static {
+        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+    }
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
 
@@ -79,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
                     f2.setVisibility(View.GONE);
                     f3.setVisibility(View.VISIBLE);
                     mOption.clear();
+                    getMenuInflater().inflate(R.menu.menu_pengaturan, mOption);
                     setTitle("Pengaturan");
                     return true;
             }
@@ -122,16 +126,7 @@ public class MainActivity extends AppCompatActivity {
 
         datakontak = new LinkedList<>();
 
-        Button keluar = (Button) findViewById(R.id.keluar);
-        keluar.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mAuth.signOut();
-                Intent keluar = new Intent(MainActivity.this, PhoneAuthActivity.class);
-                startActivity(keluar);
-                finish();
-            }
-        });
+
 
         gridView = (ExpandableHeightGridView) findViewById(R.id.gridview);
         mDatabase.child("kontak").child(nomeruser).addChildEventListener(new ChildEventListener() {
@@ -239,11 +234,20 @@ public class MainActivity extends AppCompatActivity {
             // Do something
             return true;
         } else if (id == R.id.action_item_add_kontak) {
-
+            Intent intent = new Intent(ContactsContract.Intents.Insert.ACTION);
+            intent.setType(ContactsContract.RawContacts.CONTENT_TYPE);
+            startActivity(intent);
             // Do something
             return true;
         } else if (id == R.id.action_item_tambah_bot) {
 
+            // Do something
+            return true;
+        } else if (id == R.id.action_item_logout) {
+            mAuth.signOut();
+            Intent keluar = new Intent(MainActivity.this, PhoneAuthActivity.class);
+            startActivity(keluar);
+            finish();
             // Do something
             return true;
         }
