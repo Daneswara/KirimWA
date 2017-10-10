@@ -79,15 +79,15 @@ public class PhoneAuthActivity extends AppCompatActivity implements
         // Assign views
 
 
-        mPhoneNumberField = (PhoneInputLayout) findViewById(R.id.field_phone_number);
+        mPhoneNumberField = findViewById(R.id.field_phone_number);
         mPhoneNumberField.setDefaultCountry("ID");
-        mVerificationField = (EditText) findViewById(R.id.field_verification_code);
+        mVerificationField = findViewById(R.id.field_verification_code);
 
-        mStartButton = (Button) findViewById(R.id.button_start_verification);
-        mVerifyButton = (Button) findViewById(R.id.button_verify_phone);
-        mResendButton = (Button) findViewById(R.id.button_resend);
+        mStartButton = findViewById(R.id.button_start_verification);
+        mVerifyButton = findViewById(R.id.button_verify_phone);
+        mResendButton = findViewById(R.id.button_resend);
 
-        onFailed = (LinearLayout) findViewById(R.id.phone_failed);
+        onFailed = findViewById(R.id.phone_failed);
 
         mStartButton.setVisibility(View.VISIBLE);
         onFailed.setVisibility(View.GONE);

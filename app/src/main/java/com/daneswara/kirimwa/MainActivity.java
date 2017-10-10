@@ -1,6 +1,8 @@
 package com.daneswara.kirimwa;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
@@ -52,14 +54,19 @@ public class MainActivity extends AppCompatActivity {
     List<Kontak> datakontak;
     ExpandableHeightGridView gridView;
     private static final String TAG = "FCM Service";
+
     static {
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);
     }
+
+    BottomNavigationView navigation;
+    SharedPreferences sharedpreferences;
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
 
         @Override
         public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+            SharedPreferences.Editor editor = sharedpreferences.edit();
             switch (item.getItemId()) {
                 case R.id.navigation_home:
                     fl.setVisibility(View.VISIBLE);
@@ -68,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
                     mOption.clear();
                     getMenuInflater().inflate(R.menu.menu, mOption);
                     setTitle("Kontak");
+                    editor.putInt("menu", 1);
+                    editor.commit();
                     return true;
                 case R.id.navigation_dashboard:
                     fl.setVisibility(View.GONE);
@@ -75,7 +84,9 @@ public class MainActivity extends AppCompatActivity {
                     f3.setVisibility(View.GONE);
                     mOption.clear();
                     getMenuInflater().inflate(R.menu.menu_bot, mOption);
-                    setTitle("Bot");
+                    setTitle("Campaign");
+                    editor.putInt("menu", 2);
+                    editor.commit();
                     return true;
                 case R.id.navigation_notifications:
                     fl.setVisibility(View.GONE);
@@ -84,6 +95,8 @@ public class MainActivity extends AppCompatActivity {
                     mOption.clear();
                     getMenuInflater().inflate(R.menu.menu_pengaturan, mOption);
                     setTitle("Pengaturan");
+                    editor.putInt("menu", 3);
+                    editor.commit();
                     return true;
             }
             return false;
@@ -96,98 +109,96 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         mAuth = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference();
+        sharedpreferences = getSharedPreferences("menu", Context.MODE_PRIVATE);
         FirebaseUser currentUser = mAuth.getCurrentUser();
-        if(currentUser == null){
+        if (currentUser == null) {
             Intent keluar = new Intent(MainActivity.this, PhoneAuthActivity.class);
             startActivity(keluar);
             finish();
-        }
-        if (!WhatsappApi.getInstance().isWhatsappInstalled()) {
-            Toast.makeText(this, "Whatsapp not installed", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (!WhatsappApi.getInstance().isRootAvailable()) {
-            Toast.makeText(this, "Root is not available", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        setContentView(R.layout.activity_main);
-        setTitle("Kontak");
-        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
-        navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
-        fl = (LinearLayout) findViewById(R.id.kontak);
-        f2 = (LinearLayout) findViewById(R.id.bot);
-        f3 = (LinearLayout) findViewById(R.id.pengaturan);
-        fl.setVisibility(View.VISIBLE);
-        f2.setVisibility(View.GONE);
-        f3.setVisibility(View.GONE);
-        nama = new String[]{"Daneswara", "Jauhari"};
-        foto = new int[]{R.id.action_item_add_kontak, R.id.action_item_add_kontak};
-        nomeruser = mAuth.getCurrentUser().getPhoneNumber().replace("+","");
-
-        datakontak = new LinkedList<>();
-
-
-
-        gridView = (ExpandableHeightGridView) findViewById(R.id.gridview);
-        mDatabase.child("kontak").child(nomeruser).addChildEventListener(new ChildEventListener() {
-            @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                datakontak.add(dataSnapshot.getValue(Kontak.class));
-                gridView.setAdapter(new AdapterKontak(MainActivity.this, datakontak));
-                gridView.setExpanded(true);
+        } else {
+            if (!WhatsappApi.getInstance().isWhatsappInstalled()) {
+                Toast.makeText(this, "Whatsapp not installed", Toast.LENGTH_SHORT).show();
+                return;
             }
-
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
+            if (!WhatsappApi.getInstance().isRootAvailable()) {
+                Toast.makeText(this, "Root is not available", Toast.LENGTH_SHORT).show();
+                return;
             }
+            setContentView(R.layout.activity_main);
+            setTitle("Kontak");
 
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
+            navigation = findViewById(R.id.navigation);
+            navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
+            navigation.setSaveEnabled(true);
+            fl = findViewById(R.id.kontak);
+            f2 = findViewById(R.id.bot);
+            f3 = findViewById(R.id.pengaturan);
 
-            }
+            nomeruser = mAuth.getCurrentUser().getPhoneNumber().replace("+", "");
+            datakontak = new LinkedList<>();
 
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
 
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-        final SwitchCompat sub = (SwitchCompat) findViewById(R.id.simpleSwitch);
-        mDatabase.child("bots").child(nomeruser).child("news").addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                System.out.println("value"+dataSnapshot.getValue());
-                System.out.println("key"+dataSnapshot.getKey());
-                sub.setChecked((boolean)dataSnapshot.getValue());
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-
-        sub.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(sub.isChecked()){
-                    subscribe("news", true);
-                    FirebaseMessaging.getInstance().subscribeToTopic("news");
-                    Log.d(TAG, "Subscribed to news topic");
-                    Toast.makeText(MainActivity.this, "Subscribed to news topic", Toast.LENGTH_SHORT).show();
-                } else {
-                    subscribe("news", false);
-                    FirebaseMessaging.getInstance().unsubscribeFromTopic("news");
-                    Toast.makeText(MainActivity.this, "Unsubscribed to news topic", Toast.LENGTH_SHORT).show();
-                    Log.d(TAG, "Unsubscribed to news topic");
+            gridView = (ExpandableHeightGridView) findViewById(R.id.gridview);
+            mDatabase.child("kontak").child(nomeruser).addChildEventListener(new ChildEventListener() {
+                @Override
+                public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                    datakontak.add(dataSnapshot.getValue(Kontak.class));
+                    gridView.setAdapter(new AdapterKontak(MainActivity.this, datakontak));
+                    gridView.setExpanded(true);
                 }
-            }
-        });
+
+                @Override
+                public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+                }
+
+                @Override
+                public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+                }
+
+                @Override
+                public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+
+                }
+            });
+            final SwitchCompat sub = (SwitchCompat) findViewById(R.id.simpleSwitch);
+            mDatabase.child("bots").child(nomeruser).child("news").addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    System.out.println("value" + dataSnapshot.getValue());
+                    System.out.println("key" + dataSnapshot.getKey());
+                    sub.setChecked((boolean) dataSnapshot.getValue());
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+
+                }
+            });
+
+            sub.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (sub.isChecked()) {
+                        subscribe("news", true);
+                        FirebaseMessaging.getInstance().subscribeToTopic("news");
+                        Log.d(TAG, "Subscribed to news topic");
+                        Toast.makeText(MainActivity.this, "Subscribed to news topic", Toast.LENGTH_SHORT).show();
+                    } else {
+                        subscribe("news", false);
+                        FirebaseMessaging.getInstance().unsubscribeFromTopic("news");
+                        Toast.makeText(MainActivity.this, "Unsubscribed to news topic", Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "Unsubscribed to news topic");
+                    }
+                }
+            });
+        }
     }
 
     Menu mOption;
@@ -197,6 +208,31 @@ public class MainActivity extends AppCompatActivity {
         // Inflate the menu; this adds items to the action bar if it is present.
         mOption = menu;
         getMenuInflater().inflate(R.menu.menu, menu);
+        int menunya = sharedpreferences.getInt("menu", 0);
+        SharedPreferences.Editor editor = sharedpreferences.edit();
+        if (menunya == 0) {
+            editor.putInt("menu", 1);
+            editor.commit();
+            fl.setVisibility(View.VISIBLE);
+            f2.setVisibility(View.GONE);
+            f3.setVisibility(View.GONE);
+            navigation.setSelectedItemId(R.id.navigation_home);
+        } else if (menunya == 1) {
+            fl.setVisibility(View.VISIBLE);
+            f2.setVisibility(View.GONE);
+            f3.setVisibility(View.GONE);
+            navigation.setSelectedItemId(R.id.navigation_home);
+        } else if (menunya == 2) {
+            fl.setVisibility(View.GONE);
+            f2.setVisibility(View.VISIBLE);
+            f3.setVisibility(View.GONE);
+            navigation.setSelectedItemId(R.id.navigation_dashboard);
+        } else if (menunya == 3) {
+            fl.setVisibility(View.GONE);
+            f2.setVisibility(View.GONE);
+            f3.setVisibility(View.VISIBLE);
+            navigation.setSelectedItemId(R.id.navigation_notifications);
+        }
         return true;
     }
 
@@ -212,7 +248,7 @@ public class MainActivity extends AppCompatActivity {
         if (id == R.id.action_item_refresh_menu) {
             try {
                 Toast.makeText(MainActivity.this, "Syncing with WhatsApp Contact", Toast.LENGTH_SHORT).show();
-                nomeruser = mAuth.getCurrentUser().getPhoneNumber().replace("+","");
+                nomeruser = mAuth.getCurrentUser().getPhoneNumber().replace("+", "");
                 WhatsappApi.getInstance().getContacts(this, new GetContactsListener() {
                     @Override
                     public void receiveWhatsappContacts(List<WContact> contacts) {
@@ -220,7 +256,7 @@ public class MainActivity extends AppCompatActivity {
                         for (WContact contact : contacts) {
                             String id = contact.getId().split("@")[0]; //+ ", " + contact.getId().split("@")[0];
                             String nama = contact.getName();//+ ", " + contact.getId().split("@")[0];
-                            if(id != null && nama != null){
+                            if (id != null && nama != null) {
                                 writeNewKontak(id, nama);
                             }
                             i++;
@@ -240,11 +276,14 @@ public class MainActivity extends AppCompatActivity {
             // Do something
             return true;
         } else if (id == R.id.action_item_tambah_bot) {
-
+            Intent bot = new Intent(MainActivity.this, DetailBot.class);
+            startActivity(bot);
             // Do something
             return true;
         } else if (id == R.id.action_item_logout) {
             mAuth.signOut();
+            SharedPreferences.Editor editor = sharedpreferences.edit();
+            editor.clear();
             Intent keluar = new Intent(MainActivity.this, PhoneAuthActivity.class);
             startActivity(keluar);
             finish();

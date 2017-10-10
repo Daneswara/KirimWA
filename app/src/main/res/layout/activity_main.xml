@@ -56,7 +56,7 @@
             android:layout_marginLeft="@dimen/activity_horizontal_margin"
             android:layout_marginRight="@dimen/activity_horizontal_margin"
             android:layout_marginTop="@dimen/activity_vertical_margin"
-            android:text="Bot" />
+            android:text="@string/title_dashboard" />
 
     </LinearLayout>
     <LinearLayout
@@ -73,14 +73,8 @@
             android:id="@+id/simpleSwitch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Layanan BOT"
+            android:text="Campaign"
             android:gravity="left|center"/>
-
-        <Button
-            android:id="@+id/keluar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Keluar"/>
 
     </LinearLayout>
 

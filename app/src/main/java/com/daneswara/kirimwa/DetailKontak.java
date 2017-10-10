@@ -30,8 +30,8 @@ public class DetailKontak extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail_kontak);
         mDatabase = FirebaseDatabase.getInstance().getReference();
-        input_nama = (EditText) findViewById(R.id.input_nama);
-        input_nomer = (EditText) findViewById(R.id.input_nomer);
+        input_nama = findViewById(R.id.input_nama);
+        input_nomer = findViewById(R.id.input_nomer);
         RadioGroup input_status = (RadioGroup) findViewById(R.id.input_status);
         if (getIntent().getStringExtra("nomer") != null) {
             String nama = getIntent().getStringExtra("nama");

@@ -2,7 +2,12 @@
     <string name="app_name">Kirim WA</string>
     <string name="title_activity_main">Kirim WA</string>
     <string name="title_home">Kontak</string>
-    <string name="title_dashboard">Bot</string>
+    <string name="title_dashboard">Campaign</string>
     <string name="title_notifications">Pengaturan</string>
     <string name="firebase_status_fmt">Firebase User: %s</string>
+    <string-array name="spin_waktu">
+        <item>Kirim Sekarang</item>
+        <item>Jadwalkan</item>
+    </string-array>
+
 </resources>
