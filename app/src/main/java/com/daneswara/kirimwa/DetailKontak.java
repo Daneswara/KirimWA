@@ -23,7 +23,7 @@ import java.util.ArrayList;
 
 public class DetailKontak extends AppCompatActivity {
     EditText input_nama, input_nomer;
-    String status;
+//    String status;
     private DatabaseReference mDatabase;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,39 +32,36 @@ public class DetailKontak extends AppCompatActivity {
         mDatabase = FirebaseDatabase.getInstance().getReference();
         input_nama = findViewById(R.id.input_nama);
         input_nomer = findViewById(R.id.input_nomer);
-        RadioGroup input_status = (RadioGroup) findViewById(R.id.input_status);
+//        RadioGroup input_status = (RadioGroup) findViewById(R.id.input_status);
         if (getIntent().getStringExtra("nomer") != null) {
             String nama = getIntent().getStringExtra("nama");
             String nomer = getIntent().getStringExtra("nomer");
-            status = getIntent().getStringExtra("status");
+//            status = getIntent().getStringExtra("status");
 
             setTitle(nama);
             input_nama.setText(nama);
             input_nomer.setText(nomer);
 
-            if (status.equalsIgnoreCase("Calon Pembeli")) {
-                input_status.check(R.id.calonpembeli);
-            } else if (status.equalsIgnoreCase("Pembeli")) {
-                input_status.check(R.id.pembeli);
-            } else if (status.equalsIgnoreCase("Pelanggan")) {
-                input_status.check(R.id.pelanggan);
-            }
-
-            input_status.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-                @Override
-                public void onCheckedChanged(RadioGroup group, @IdRes int checkedId) {
-                    if(checkedId == R.id.calonpembeli){
-                        status = "Calon Pembeli";
-                    } else if(checkedId == R.id.pembeli){
-                        status = "Pembeli";
-                    } else if(checkedId == R.id.pelanggan){
-                        status = "Pelanggan";
-                    }
-                }
-            });
-        } else {
-            setTitle("Tambak Kontak Baru");
-            input_status.check(R.id.calonpembeli);
+//            if (status.equalsIgnoreCase("Calon Pembeli")) {
+//                input_status.check(R.id.calonpembeli);
+//            } else if (status.equalsIgnoreCase("Pembeli")) {
+//                input_status.check(R.id.pembeli);
+//            } else if (status.equalsIgnoreCase("Pelanggan")) {
+//                input_status.check(R.id.pelanggan);
+//            }
+//
+//            input_status.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+//                @Override
+//                public void onCheckedChanged(RadioGroup group, @IdRes int checkedId) {
+//                    if(checkedId == R.id.calonpembeli){
+//                        status = "Calon Pembeli";
+//                    } else if(checkedId == R.id.pembeli){
+//                        status = "Pembeli";
+//                    } else if(checkedId == R.id.pelanggan){
+//                        status = "Pelanggan";
+//                    }
+//                }
+//            });
         }
 
     }
@@ -87,7 +84,7 @@ public class DetailKontak extends AppCompatActivity {
         if (id == R.id.action_item_save) {
             // Do something
             // Creates a new Intent to insert a contact
-            editStatus();
+//            editStatus();
             return true;
         }
 
@@ -110,9 +107,9 @@ public class DetailKontak extends AppCompatActivity {
     }
 
     private void editStatus() {
-        String nomeruser = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber().replace("+","");
-        mDatabase.child("kontak").child(nomeruser).child(input_nomer.getText().toString()).child("status").setValue(status);
-        Toast.makeText(DetailKontak.this, "Status "+input_nama.getText()+" berhasil diubah menjadi "+status, Toast.LENGTH_SHORT).show();
+//        String nomeruser = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber().replace("+","");
+//        mDatabase.child("kontak").child(nomeruser).child(input_nomer.getText().toString()).child("status").setValue(status);
+//        Toast.makeText(DetailKontak.this, "Status "+input_nama.getText()+" berhasil diubah menjadi "+status, Toast.LENGTH_SHORT).show();
     }
 
 

@@ -9,6 +9,7 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SwitchCompat;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -21,11 +22,10 @@ import android.widget.Toast;
 
 import com.daneswara.kirimwa.adapter.AdapterKontak;
 import com.daneswara.kirimwa.object.Kontak;
-import com.daneswara.kirimwa.object.KontakDB;
+import com.daneswara.kirimwa.object.StatusUser;
 import com.daneswara.kirimwa.tools.ExpandableHeightGridView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.auth.PhoneAuthCredential;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -50,10 +50,11 @@ public class MainActivity extends AppCompatActivity {
     int foto[];
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
-    private String nomeruser;
+    private String uid_user;
     List<Kontak> datakontak;
     ExpandableHeightGridView gridView;
     private static final String TAG = "FCM Service";
+    String id_device;
 
     static {
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);
@@ -112,10 +113,18 @@ public class MainActivity extends AppCompatActivity {
         sharedpreferences = getSharedPreferences("menu", Context.MODE_PRIVATE);
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
-            Intent keluar = new Intent(MainActivity.this, PhoneAuthActivity.class);
+            Intent keluar = new Intent(MainActivity.this, LoginActivity.class);
             startActivity(keluar);
             finish();
         } else {
+            TelephonyManager telephonyManager = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+            id_device = telephonyManager.getDeviceId();
+            if(id_device == null){
+                Toast.makeText(MainActivity.this, "ID Device is empty", Toast.LENGTH_SHORT).show();
+                Intent keluar = new Intent(MainActivity.this, LoginActivity.class);
+                startActivity(keluar);
+                finish();
+            }
             if (!WhatsappApi.getInstance().isWhatsappInstalled()) {
                 Toast.makeText(this, "Whatsapp not installed", Toast.LENGTH_SHORT).show();
                 return;
@@ -134,12 +143,13 @@ public class MainActivity extends AppCompatActivity {
             f2 = findViewById(R.id.bot);
             f3 = findViewById(R.id.pengaturan);
 
-            nomeruser = mAuth.getCurrentUser().getPhoneNumber().replace("+", "");
+            uid_user = mAuth.getCurrentUser().getUid();
             datakontak = new LinkedList<>();
 
 
-            gridView = (ExpandableHeightGridView) findViewById(R.id.gridview);
-            mDatabase.child("kontak").child(nomeruser).addChildEventListener(new ChildEventListener() {
+
+            gridView = findViewById(R.id.gridview);
+            mDatabase.child("kontak").child(id_device).addChildEventListener(new ChildEventListener() {
                 @Override
                 public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                     datakontak.add(dataSnapshot.getValue(Kontak.class));
@@ -167,12 +177,10 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             });
-            final SwitchCompat sub = (SwitchCompat) findViewById(R.id.simpleSwitch);
-            mDatabase.child("bots").child(nomeruser).child("news").addValueEventListener(new ValueEventListener() {
+            final SwitchCompat sub = findViewById(R.id.simpleSwitch);
+            mDatabase.child("message").child(id_device).child("campaign").addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    System.out.println("value" + dataSnapshot.getValue());
-                    System.out.println("key" + dataSnapshot.getKey());
                     sub.setChecked((boolean) dataSnapshot.getValue());
                 }
 
@@ -186,15 +194,13 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     if (sub.isChecked()) {
-                        subscribe("news", true);
-                        FirebaseMessaging.getInstance().subscribeToTopic("news");
-                        Log.d(TAG, "Subscribed to news topic");
-                        Toast.makeText(MainActivity.this, "Subscribed to news topic", Toast.LENGTH_SHORT).show();
+                        campaign(true);
+                        Log.d(TAG, "Campaign Activated");
+                        Toast.makeText(MainActivity.this, "Campaign Activated", Toast.LENGTH_SHORT).show();
                     } else {
-                        subscribe("news", false);
-                        FirebaseMessaging.getInstance().unsubscribeFromTopic("news");
-                        Toast.makeText(MainActivity.this, "Unsubscribed to news topic", Toast.LENGTH_SHORT).show();
-                        Log.d(TAG, "Unsubscribed to news topic");
+                        campaign(false);
+                        Toast.makeText(MainActivity.this, "Campaign Unactivated", Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "Campaign Unactivated");
                     }
                 }
             });
@@ -248,7 +254,6 @@ public class MainActivity extends AppCompatActivity {
         if (id == R.id.action_item_refresh_menu) {
             try {
                 Toast.makeText(MainActivity.this, "Syncing with WhatsApp Contact", Toast.LENGTH_SHORT).show();
-                nomeruser = mAuth.getCurrentUser().getPhoneNumber().replace("+", "");
                 WhatsappApi.getInstance().getContacts(this, new GetContactsListener() {
                     @Override
                     public void receiveWhatsappContacts(List<WContact> contacts) {
@@ -282,9 +287,10 @@ public class MainActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_item_logout) {
             mAuth.signOut();
+            FirebaseMessaging.getInstance().unsubscribeFromTopic("news");
             SharedPreferences.Editor editor = sharedpreferences.edit();
             editor.clear();
-            Intent keluar = new Intent(MainActivity.this, PhoneAuthActivity.class);
+            Intent keluar = new Intent(MainActivity.this, LoginActivity.class);
             startActivity(keluar);
             finish();
             // Do something
@@ -296,10 +302,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void writeNewKontak(String nomer, String nama) {
         Kontak user = new Kontak(nomer, nama);
-        mDatabase.child("kontak").child(nomeruser).child(nomer).setValue(user);
+        StatusUser userstatus = new StatusUser(id_device);
+        mDatabase.child("kontak").child(id_device).child(nomer).setValue(user);
+        mDatabase.child("kontak").child(id_device).child(nomer).child("status").setValue(userstatus);
+        mDatabase.child("kontak").child(id_device).child(nomer).child("score").setValue(0);
     }
 
-    private void subscribe(String topic, Boolean aktif) {
-        mDatabase.child("bots").child(nomeruser).child(topic).setValue(aktif);
+    private void campaign(Boolean aktif) {
+        mDatabase.child("message").child(id_device).child("campaign").setValue(aktif);
     }
 }

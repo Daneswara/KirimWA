@@ -14,7 +14,6 @@ public class Kontak {
 
     public String nama;
     public String nomer;
-    public String status;
     public String tanggal_dibuat;
 
     public Kontak() {
@@ -24,7 +23,6 @@ public class Kontak {
     public Kontak(String nomer, String nama) {
         this.nomer = nomer;
         this.nama = nama;
-        this.status = "Calon Pembeli";
         this.tanggal_dibuat = new SimpleDateFormat("dd-MM-yyyy").format(Calendar.getInstance().getTime());
     }
 

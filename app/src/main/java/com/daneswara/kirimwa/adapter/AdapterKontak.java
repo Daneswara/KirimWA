@@ -18,7 +18,6 @@ import com.amulyakhare.textdrawable.util.ColorGenerator;
 import com.daneswara.kirimwa.DetailKontak;
 import com.daneswara.kirimwa.R;
 import com.daneswara.kirimwa.object.Kontak;
-import com.daneswara.kirimwa.object.KontakDB;
 
 import java.util.List;
 
@@ -97,7 +96,6 @@ public class AdapterKontak extends BaseAdapter {
                 Intent detail = new Intent(mContext, DetailKontak.class);
                 detail.putExtra("nama", daftarkontak.get(position).nama);
                 detail.putExtra("nomer", daftarkontak.get(position).nomer);
-                detail.putExtra("status", daftarkontak.get(position).status);
                 mContext.startActivity(detail);
             }
         });
