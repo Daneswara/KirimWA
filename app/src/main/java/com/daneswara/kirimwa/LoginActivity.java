@@ -35,21 +35,33 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.daneswara.kirimwa.object.User;
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInResult;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseNetworkException;
+import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
 import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.ArrayList;
@@ -62,7 +74,7 @@ import static android.Manifest.permission.READ_CONTACTS;
 /**
  * A login screen that offers login via email/password.
  */
-public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<Cursor> {
+public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<Cursor>, GoogleApiClient.OnConnectionFailedListener {
 
     /**
      * Id to identity READ_CONTACTS permission request.
@@ -92,6 +104,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private View mProgressView;
     private View mLoginFormView;
     private View mSignUpFormView;
+
+    private static final int RC_SIGN_IN = 9001;
+    private GoogleApiClient mGoogleApiClient;
 
     String id_device;
     int count_device = 0;
@@ -136,6 +151,25 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                     attemptLogin();
                 }
             });
+            // Configure Google Sign In
+            GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestIdToken(getString(R.string.default_web_client_id))
+                    .requestEmail()
+                    .build();
+            Button mGoogle = findViewById(R.id.sign_in_google);
+            mGoogle.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
+                    startActivityForResult(signInIntent, RC_SIGN_IN);
+                }
+            });
+
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .enableAutoManage(this, this)
+                    .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+                    .build();
+
 
             mLoginFormView = findViewById(R.id.login_form);
             mSignUpFormView = findViewById(R.id.signup);
@@ -148,6 +182,161 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                 }
             });
         }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == RC_SIGN_IN) {
+            GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
+            if (result.isSuccess()) {
+                // Google Sign In was successful, authenticate with Firebase
+                GoogleSignInAccount account = result.getSignInAccount();
+                firebaseAuthWithGoogle(account);
+            } else {
+                // Google Sign In failed, update UI appropriately
+                // ...
+            }
+        }
+
+    }
+
+    private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
+        Log.d(TAG, "firebaseAuthWithGoogle:" + acct.getId());
+
+        prosses_login = new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.PROGRESS_TYPE);
+        prosses_login.getProgressHelper().setBarColor(Color.parseColor("#A5DC86"));
+        prosses_login.setTitleText("Loading");
+        prosses_login.setCancelable(false);
+        prosses_login.show();
+
+        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+        mAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            // Sign in success, update UI with the signed-in user's information
+                            Log.d(TAG, "signInWithCredential:success");
+                            FirebaseUser user = mAuth.getCurrentUser();
+                            mDatabase.child("users").addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                    if(!dataSnapshot.hasChild(mAuth.getCurrentUser().getUid())){
+                                        User newuser = new User(mAuth.getCurrentUser().getEmail(), 1L);
+                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).setValue(newuser);
+                                        String token = FirebaseInstanceId.getInstance().getToken();
+                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(token);
+                                        mDatabase.child("message").child(id_device).child("campaign").setValue(true);
+                                    } else {
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
+
+                                }
+                            });
+
+                            prosses_login.dismissWithAnimation();
+                            mDatabase.child("users").child(user.getUid()).child("device").addChildEventListener(new ChildEventListener() {
+                                @Override
+                                public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                                    count_device++;
+                                    if (dataSnapshot.getKey().toString().equals(id_device)) {
+                                        FirebaseMessaging.getInstance().subscribeToTopic("news");
+
+                                        String token = FirebaseInstanceId.getInstance().getToken();
+                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(token);
+
+                                        Auth.GoogleSignInApi.signOut(mGoogleApiClient);
+                                        Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
+                                        startActivity(masuk);
+                                        finish();
+                                    } else if (count_device >= dataSnapshot.getChildrenCount()) {
+                                        //stop progress bar here
+
+                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("tipe").addListenerForSingleValueEvent(new ValueEventListener() {
+                                            @Override
+                                            public void onDataChange(DataSnapshot dataSnapshot) {
+                                                Long tipe_user = (Long) dataSnapshot.getValue();
+                                                if (tipe_user > count_device) {
+                                                    new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.WARNING_TYPE)
+                                                            .setTitleText("Attention!")
+                                                            .setContentText("Do you want to add this device to your account?")
+                                                            .setConfirmText("Yes, please!")
+                                                            .showCancelButton(true)
+                                                            .setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
+                                                                @Override
+                                                                public void onClick(SweetAlertDialog sDialog) {
+                                                                    String token = FirebaseInstanceId.getInstance().getToken();
+                                                                    mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(token);
+                                                                    sDialog.dismissWithAnimation();
+                                                                    FirebaseMessaging.getInstance().subscribeToTopic("news");
+                                                                    Auth.GoogleSignInApi.signOut(mGoogleApiClient);
+                                                                    Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
+                                                                    startActivity(masuk);
+                                                                    finish();
+                                                                }
+                                                            })
+                                                            .setCancelClickListener(new SweetAlertDialog.OnSweetClickListener() {
+                                                                @Override
+                                                                public void onClick(SweetAlertDialog sweetAlertDialog) {
+                                                                    mAuth.signOut();
+                                                                    sweetAlertDialog.dismissWithAnimation();
+                                                                }
+                                                            })
+                                                            .show();
+                                                } else {
+                                                    mAuth.signOut();
+                                                    new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.ERROR_TYPE)
+                                                            .setTitleText("Please upgrade your account!")
+                                                            .setContentText("You only can login with this account for " + tipe_user + " device")
+                                                            .show();
+                                                }
+                                            }
+
+                                            @Override
+                                            public void onCancelled(DatabaseError databaseError) {
+
+                                            }
+                                        });
+                                        //showProgress(false);
+
+                                    }
+                                }
+
+                                @Override
+                                public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+                                }
+
+                                @Override
+                                public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+                                }
+
+                                @Override
+                                public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
+
+                                }
+                            });
+                        } else {
+                            // If sign in fails, display a message to the user.
+                            prosses_login.dismissWithAnimation();
+                            Log.w(TAG, "signInWithCredential:failure", task.getException());
+                            Toast.makeText(LoginActivity.this, "Authentication failed.",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+
+                        // ...
+                    }
+                });
     }
 
     private void populateAutoComplete() {
@@ -268,6 +457,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                         count_device++;
                                         if (dataSnapshot.getKey().toString().equals(id_device)) {
                                             FirebaseMessaging.getInstance().subscribeToTopic("news");
+                                            String token = FirebaseInstanceId.getInstance().getToken();
+                                            mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(token);
                                             Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
                                             startActivity(masuk);
                                             finish();
@@ -287,7 +478,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                                                 .setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
                                                                     @Override
                                                                     public void onClick(SweetAlertDialog sDialog) {
-                                                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(1);
+                                                                        String token = FirebaseInstanceId.getInstance().getToken();
+                                                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(token);
                                                                         sDialog.dismissWithAnimation();
                                                                         FirebaseMessaging.getInstance().subscribeToTopic("news");
                                                                         Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
@@ -463,6 +655,12 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                         android.R.layout.simple_dropdown_item_1line, emailAddressCollection);
 
         mEmailView.setAdapter(adapter);
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.d(TAG, "onConnectionFailed:" + connectionResult);
+        Toast.makeText(this, "Google Play Services error.", Toast.LENGTH_SHORT).show();
     }
 
 

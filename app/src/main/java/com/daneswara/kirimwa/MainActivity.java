@@ -112,6 +112,14 @@ public class MainActivity extends AppCompatActivity {
         mDatabase = FirebaseDatabase.getInstance().getReference();
         sharedpreferences = getSharedPreferences("menu", Context.MODE_PRIVATE);
         FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (!WhatsappApi.getInstance().isWhatsappInstalled()) {
+            Toast.makeText(this, "Whatsapp not installed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!WhatsappApi.getInstance().isRootAvailable()) {
+            Toast.makeText(this, "Root is not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (currentUser == null) {
             Intent keluar = new Intent(MainActivity.this, LoginActivity.class);
             startActivity(keluar);
@@ -125,23 +133,15 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(keluar);
                 finish();
             }
-            if (!WhatsappApi.getInstance().isWhatsappInstalled()) {
-                Toast.makeText(this, "Whatsapp not installed", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!WhatsappApi.getInstance().isRootAvailable()) {
-                Toast.makeText(this, "Root is not available", Toast.LENGTH_SHORT).show();
-                return;
-            }
             setContentView(R.layout.activity_main);
             setTitle("Kontak");
+            fl = findViewById(R.id.kontak);
+            f2 = findViewById(R.id.bot);
+            f3 = findViewById(R.id.pengaturan);
 
             navigation = findViewById(R.id.navigation);
             navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
             navigation.setSaveEnabled(true);
-            fl = findViewById(R.id.kontak);
-            f2 = findViewById(R.id.bot);
-            f3 = findViewById(R.id.pengaturan);
 
             uid_user = mAuth.getCurrentUser().getUid();
             datakontak = new LinkedList<>();
@@ -290,6 +290,7 @@ public class MainActivity extends AppCompatActivity {
             FirebaseMessaging.getInstance().unsubscribeFromTopic("news");
             SharedPreferences.Editor editor = sharedpreferences.edit();
             editor.clear();
+            editor.commit();
             Intent keluar = new Intent(MainActivity.this, LoginActivity.class);
             startActivity(keluar);
             finish();

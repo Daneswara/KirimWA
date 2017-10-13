@@ -49,6 +49,7 @@ import com.google.firebase.auth.FirebaseAuthWeakPasswordException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.ArrayList;
@@ -284,7 +285,9 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
                                 FirebaseUser user = mAuth.getCurrentUser();
                                 User newuser = new User(mNamaView.getText().toString(), 1L);
                                 mDatabase.child("users").child(user.getUid()).setValue(newuser);
-                                mDatabase.child("users").child(user.getUid()).child("device").child(id_device).setValue(1);
+
+                                String token = FirebaseInstanceId.getInstance().getToken();
+                                mDatabase.child("users").child(user.getUid()).child("device").child(id_device).setValue(token);
                                 mDatabase.child("message").child(id_device).child("campaign").setValue(true);
                                 FirebaseMessaging.getInstance().subscribeToTopic("news");
                                 Intent masuk = new Intent(RegisterActivity.this, MainActivity.class);
