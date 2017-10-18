@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/KirimWA.iml" filepath="$PROJECT_DIR$/KirimWA.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/whatsappapilibrary/whatsappapilibrary.iml" filepath="$PROJECT_DIR$/whatsappapilibrary/whatsappapilibrary.iml" />
     </modules>
   </component>
 </project>

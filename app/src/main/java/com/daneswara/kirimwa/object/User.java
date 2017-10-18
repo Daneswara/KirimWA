@@ -13,14 +13,14 @@ import java.util.Calendar;
 public class User {
 
     public String name;
-    public Long tipe;
+    public long tipe;
     public String register;
 
     public User() {
         // Default constructor required for calls to DataSnapshot.getValue(User.class)
     }
 
-    public User(String name, Long tipe) {
+    public User(String name, long tipe) {
         this.name = name;
         this.tipe = tipe;
         this.register = new SimpleDateFormat("dd-MM-yyyy").format(Calendar.getInstance().getTime());

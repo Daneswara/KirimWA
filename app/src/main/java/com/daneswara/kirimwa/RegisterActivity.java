@@ -35,6 +35,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.daneswara.kirimwa.object.Device;
 import com.daneswara.kirimwa.object.User;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -42,18 +43,17 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
-import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import cn.pedant.SweetAlert.SweetAlertDialog;
 
@@ -69,7 +69,7 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
      */
     private static final int REQUEST_READ_CONTACTS = 0;
     private static final String TAG = "Login Service";
-    private DatabaseReference mDatabase;
+    private FirebaseFirestore db;
     private FirebaseAuth mAuth;
     String id_device;
     SweetAlertDialog prosses_login;
@@ -97,7 +97,7 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
         mAuth = FirebaseAuth.getInstance();
-        mDatabase = FirebaseDatabase.getInstance().getReference();
+        db = FirebaseFirestore.getInstance();
         setupActionBar();
         // Set up the login form.
         mEmailView = findViewById(R.id.email);
@@ -266,14 +266,11 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
         } else {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
-//            showProgress(true);
             prosses_login = new SweetAlertDialog(this, SweetAlertDialog.PROGRESS_TYPE);
             prosses_login.getProgressHelper().setBarColor(Color.parseColor("#A5DC86"));
             prosses_login.setTitleText("Loading");
             prosses_login.setCancelable(false);
             prosses_login.show();
-//            mAuthTask = new UserLoginTask(email, password);
-//            mAuthTask.execute((Void) null);
             mAuth.createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                         @Override
@@ -283,12 +280,28 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
                                 // Sign in success, update UI with the signed-in user's information
                                 Log.d(TAG, "createUserWithEmail:success");
                                 FirebaseUser user = mAuth.getCurrentUser();
-                                User newuser = new User(mNamaView.getText().toString(), 1L);
-                                mDatabase.child("users").child(user.getUid()).setValue(newuser);
-
+                                User newuser = new User(mNamaView.getText().toString(), 1);
+                                db.collection("users").document(user.getUid()).set(newuser).addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                });
                                 String token = FirebaseInstanceId.getInstance().getToken();
-                                mDatabase.child("users").child(user.getUid()).child("device").child(id_device).setValue(token);
-                                mDatabase.child("message").child(id_device).child("campaign").setValue(true);
+                                db.collection("users").document(user.getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                });
+                                Map<String,Object> message = new HashMap<>();
+                                message.put("campaign", true);
+                                db.collection("message").document(id_device).set(message).addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                });
                                 FirebaseMessaging.getInstance().subscribeToTopic("news");
                                 Intent masuk = new Intent(RegisterActivity.this, MainActivity.class);
                                 startActivity(masuk);
@@ -297,14 +310,10 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
                                 // If sign in fails, display a message to the user.
                                 Log.w(TAG, "createUserWithEmail:failure", task.getException());
                             }
-//                            showProgress(false);
-
-                            // ...
                         }
                     }).addOnFailureListener(new OnFailureListener() {
                 @Override
                 public void onFailure(@NonNull Exception e) {
-//                    showProgress(false);
                     prosses_login.dismissWithAnimation();
                     if(e instanceof FirebaseAuthUserCollisionException){
                         Toast.makeText(RegisterActivity.this, "This User Already Registered , Please Login", Toast.LENGTH_SHORT).show();

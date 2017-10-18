@@ -27,6 +27,7 @@ public class Home extends AppCompatActivity {
     List<WContact> mReceivers;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
 
         if (!WhatsappApi.getInstance().isWhatsappInstalled()) {

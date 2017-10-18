@@ -35,6 +35,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.daneswara.kirimwa.object.Device;
 import com.daneswara.kirimwa.object.User;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -46,6 +47,7 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.auth.AuthCredential;
@@ -55,17 +57,16 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
 import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import cn.pedant.SweetAlert.SweetAlertDialog;
 
@@ -82,6 +83,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private static final int REQUEST_READ_CONTACTS = 0;
     private static final String TAG = "Login Service";
     SweetAlertDialog prosses_login;
+    private FirebaseFirestore db;
 
     /**
      * A dummy authentication store containing known user names and passwords.
@@ -95,7 +97,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
      */
     private UserLoginTask mAuthTask = null;
     private FirebaseAuth mAuth;
-    private DatabaseReference mDatabase;
 
 
     // UI references.
@@ -115,7 +116,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mAuth = FirebaseAuth.getInstance();
-        mDatabase = FirebaseDatabase.getInstance().getReference();
+        db = FirebaseFirestore.getInstance();
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
             Intent keluar = new Intent(LoginActivity.this, MainActivity.class);
@@ -216,114 +217,118 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
+                            prosses_login.dismissWithAnimation();
                             // Sign in success, update UI with the signed-in user's information
                             Log.d(TAG, "signInWithCredential:success");
                             FirebaseUser user = mAuth.getCurrentUser();
-                            mDatabase.child("users").addListenerForSingleValueEvent(new ValueEventListener() {
+                            db.collection("users").document(mAuth.getCurrentUser().getUid()).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                                 @Override
-                                public void onDataChange(DataSnapshot dataSnapshot) {
-                                    if(!dataSnapshot.hasChild(mAuth.getCurrentUser().getUid())){
-                                        User newuser = new User(mAuth.getCurrentUser().getEmail(), 1L);
-                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).setValue(newuser);
+                                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                                    if(!task.getResult().exists()){
+                                        User newuser = new User(mAuth.getCurrentUser().getEmail(), 1);
+                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).set(newuser).addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                e.printStackTrace();
+                                            }
+                                        });
                                         String token = FirebaseInstanceId.getInstance().getToken();
-                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(token);
-                                        mDatabase.child("message").child(id_device).child("campaign").setValue(true);
-                                    } else {
-                                    }
-                                }
-
-                                @Override
-                                public void onCancelled(DatabaseError databaseError) {
-
-                                }
-                            });
-
-                            prosses_login.dismissWithAnimation();
-                            mDatabase.child("users").child(user.getUid()).child("device").addChildEventListener(new ChildEventListener() {
-                                @Override
-                                public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                                    count_device++;
-                                    if (dataSnapshot.getKey().toString().equals(id_device)) {
+                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                e.printStackTrace();
+                                            }
+                                        });
+                                        Map<String,Object> message = new HashMap<>();
+                                        message.put("campaign", true);
+                                        db.collection("message").document(id_device).set(message).addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                e.printStackTrace();
+                                            }
+                                        });
                                         FirebaseMessaging.getInstance().subscribeToTopic("news");
-
-                                        String token = FirebaseInstanceId.getInstance().getToken();
-                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(token);
-
                                         Auth.GoogleSignInApi.signOut(mGoogleApiClient);
                                         Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
                                         startActivity(masuk);
                                         finish();
-                                    } else if (count_device >= dataSnapshot.getChildrenCount()) {
-                                        //stop progress bar here
+                                    } else {
+                                        final User cekuser = task.getResult().toObject(User.class);
 
-                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("tipe").addListenerForSingleValueEvent(new ValueEventListener() {
+                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                                             @Override
-                                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                                Long tipe_user = (Long) dataSnapshot.getValue();
-                                                if (tipe_user > count_device) {
-                                                    new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.WARNING_TYPE)
-                                                            .setTitleText("Attention!")
-                                                            .setContentText("Do you want to add this device to your account?")
-                                                            .setConfirmText("Yes, please!")
-                                                            .showCancelButton(true)
-                                                            .setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
-                                                                @Override
-                                                                public void onClick(SweetAlertDialog sDialog) {
-                                                                    String token = FirebaseInstanceId.getInstance().getToken();
-                                                                    mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(token);
-                                                                    sDialog.dismissWithAnimation();
-                                                                    FirebaseMessaging.getInstance().subscribeToTopic("news");
-                                                                    Auth.GoogleSignInApi.signOut(mGoogleApiClient);
-                                                                    Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
-                                                                    startActivity(masuk);
-                                                                    finish();
-                                                                }
-                                                            })
-                                                            .setCancelClickListener(new SweetAlertDialog.OnSweetClickListener() {
-                                                                @Override
-                                                                public void onClick(SweetAlertDialog sweetAlertDialog) {
-                                                                    mAuth.signOut();
-                                                                    sweetAlertDialog.dismissWithAnimation();
-                                                                }
-                                                            })
-                                                            .show();
-                                                } else {
-                                                    mAuth.signOut();
-                                                    new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.ERROR_TYPE)
-                                                            .setTitleText("Please upgrade your account!")
-                                                            .setContentText("You only can login with this account for " + tipe_user + " device")
-                                                            .show();
+                                            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                                boolean cek = true;
+                                                for (DocumentSnapshot document : task.getResult()){
+                                                    Device dev = document.toObject(Device.class);
+                                                    if(dev.id_device.equals(id_device)){
+                                                        cek = false;
+                                                        String token = FirebaseInstanceId.getInstance().getToken();
+                                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
+                                                            @Override
+                                                            public void onFailure(@NonNull Exception e) {
+                                                                e.printStackTrace();
+                                                            }
+                                                        });
+                                                        FirebaseMessaging.getInstance().subscribeToTopic("news");
+                                                        Auth.GoogleSignInApi.signOut(mGoogleApiClient);
+                                                        Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
+                                                        startActivity(masuk);
+                                                        finish();
+                                                    }
+                                                }
+                                                if (cek) {
+                                                    if (task.getResult().size() < cekuser.tipe) {
+                                                        new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.WARNING_TYPE)
+                                                                .setTitleText("Attention!")
+                                                                .setContentText("Do you want to add this device to your account?")
+                                                                .setConfirmText("Yes, please!")
+                                                                .showCancelButton(true)
+                                                                .setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
+                                                                    @Override
+                                                                    public void onClick(SweetAlertDialog sDialog) {
+                                                                        String token = FirebaseInstanceId.getInstance().getToken();
+                                                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
+                                                                            @Override
+                                                                            public void onFailure(@NonNull Exception e) {
+                                                                                e.printStackTrace();
+                                                                            }
+                                                                        });
+                                                                        Map<String,Object> message = new HashMap<>();
+                                                                        message.put("campaign", true);
+                                                                        db.collection("message").document(id_device).set(message).addOnFailureListener(new OnFailureListener() {
+                                                                            @Override
+                                                                            public void onFailure(@NonNull Exception e) {
+                                                                                e.printStackTrace();
+                                                                            }
+                                                                        });
+                                                                        sDialog.dismissWithAnimation();
+                                                                        FirebaseMessaging.getInstance().subscribeToTopic("news");
+                                                                        Auth.GoogleSignInApi.signOut(mGoogleApiClient);
+                                                                        Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
+                                                                        startActivity(masuk);
+                                                                        finish();
+                                                                    }
+                                                                })
+                                                                .setCancelClickListener(new SweetAlertDialog.OnSweetClickListener() {
+                                                                    @Override
+                                                                    public void onClick(SweetAlertDialog sweetAlertDialog) {
+                                                                        mAuth.signOut();
+                                                                        sweetAlertDialog.dismissWithAnimation();
+                                                                    }
+                                                                })
+                                                                .show();
+                                                    } else {
+                                                        mAuth.signOut();
+                                                        new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.ERROR_TYPE)
+                                                                .setTitleText("Please upgrade your account!")
+                                                                .setContentText("You only can login with this account for " + cekuser.tipe + " device")
+                                                                .show();
+                                                    }
                                                 }
                                             }
-
-                                            @Override
-                                            public void onCancelled(DatabaseError databaseError) {
-
-                                            }
                                         });
-                                        //showProgress(false);
-
                                     }
-                                }
-
-                                @Override
-                                public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-                                }
-
-                                @Override
-                                public void onChildRemoved(DataSnapshot dataSnapshot) {
-
-                                }
-
-                                @Override
-                                public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-                                }
-
-                                @Override
-                                public void onCancelled(DatabaseError databaseError) {
-
                                 }
                             });
                         } else {
@@ -439,8 +444,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             prosses_login.setTitleText("Loading");
             prosses_login.setCancelable(false);
             prosses_login.show();
-//            mAuthTask = new UserLoginTask(email, password);
-//            mAuthTask.execute((Void) null);
             mAuth.signInWithEmailAndPassword(email, password)
                     .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                         @Override
@@ -448,103 +451,93 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
                             if (task.isSuccessful()) {
                                 // Sign in success, update UI with the signed-in user's information
-                                Log.d(TAG, "signInWithEmail:success");
-                                FirebaseUser user = mAuth.getCurrentUser();
-                                prosses_login.dismissWithAnimation();
-                                mDatabase.child("users").child(user.getUid()).child("device").addChildEventListener(new ChildEventListener() {
+                                db.collection("users").document(mAuth.getCurrentUser().getUid()).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                                     @Override
-                                    public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                                        count_device++;
-                                        if (dataSnapshot.getKey().toString().equals(id_device)) {
-                                            FirebaseMessaging.getInstance().subscribeToTopic("news");
-                                            String token = FirebaseInstanceId.getInstance().getToken();
-                                            mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(token);
-                                            Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
-                                            startActivity(masuk);
-                                            finish();
-                                        } else if (count_device >= dataSnapshot.getChildrenCount()) {
-                                            //stop progress bar here
-
-                                            mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("tipe").addListenerForSingleValueEvent(new ValueEventListener() {
+                                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                                        if(task.getResult().exists()){
+                                            final User cekuser = task.getResult().toObject(User.class);
+                                            db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                                                 @Override
-                                                public void onDataChange(DataSnapshot dataSnapshot) {
-                                                    Long tipe_user = (Long) dataSnapshot.getValue();
-                                                    if (tipe_user > count_device) {
-                                                        new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.WARNING_TYPE)
-                                                                .setTitleText("Attention!")
-                                                                .setContentText("Do you want to add this device to your account?")
-                                                                .setConfirmText("Yes, please!")
-                                                                .showCancelButton(true)
-                                                                .setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
-                                                                    @Override
-                                                                    public void onClick(SweetAlertDialog sDialog) {
-                                                                        String token = FirebaseInstanceId.getInstance().getToken();
-                                                                        mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("device").child(id_device).setValue(token);
-                                                                        sDialog.dismissWithAnimation();
-                                                                        FirebaseMessaging.getInstance().subscribeToTopic("news");
-                                                                        Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
-                                                                        startActivity(masuk);
-                                                                        finish();
-                                                                    }
-                                                                })
-                                                                .setCancelClickListener(new SweetAlertDialog.OnSweetClickListener() {
-                                                                    @Override
-                                                                    public void onClick(SweetAlertDialog sweetAlertDialog) {
-                                                                        mAuth.signOut();
-                                                                        sweetAlertDialog.dismissWithAnimation();
-                                                                    }
-                                                                })
-                                                                .show();
-                                                    } else {
-                                                        mAuth.signOut();
-                                                        new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.ERROR_TYPE)
-                                                                .setTitleText("Please upgrade your account!")
-                                                                .setContentText("You only can login with this account for " + tipe_user + " device")
-                                                                .show();
+                                                public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                                    boolean cek = true;
+                                                    for (DocumentSnapshot document : task.getResult()){
+                                                        Device dev = document.toObject(Device.class);
+                                                        if(dev.id_device.equals(id_device)){
+                                                            cek = false;
+                                                            String token = FirebaseInstanceId.getInstance().getToken();
+                                                            db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
+                                                                @Override
+                                                                public void onFailure(@NonNull Exception e) {
+                                                                    e.printStackTrace();
+                                                                }
+                                                            });
+                                                            FirebaseMessaging.getInstance().subscribeToTopic("news");
+                                                            Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
+                                                            startActivity(masuk);
+                                                            finish();
+                                                        }
+                                                    }
+                                                    if (cek) {
+                                                        if (task.getResult().size() < cekuser.tipe) {
+                                                            new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.WARNING_TYPE)
+                                                                    .setTitleText("Attention!")
+                                                                    .setContentText("Do you want to add this device to your account?")
+                                                                    .setConfirmText("Yes, please!")
+                                                                    .showCancelButton(true)
+                                                                    .setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
+                                                                        @Override
+                                                                        public void onClick(SweetAlertDialog sDialog) {
+                                                                            String token = FirebaseInstanceId.getInstance().getToken();
+                                                                            db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
+                                                                                @Override
+                                                                                public void onFailure(@NonNull Exception e) {
+                                                                                    e.printStackTrace();
+                                                                                }
+                                                                            });
+                                                                            Map<String,Object> message = new HashMap<>();
+                                                                            message.put("campaign", true);
+                                                                            db.collection("message").document(id_device).set(message).addOnFailureListener(new OnFailureListener() {
+                                                                                @Override
+                                                                                public void onFailure(@NonNull Exception e) {
+                                                                                    e.printStackTrace();
+                                                                                }
+                                                                            });
+                                                                            sDialog.dismissWithAnimation();
+                                                                            FirebaseMessaging.getInstance().subscribeToTopic("news");
+                                                                            Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
+                                                                            startActivity(masuk);
+                                                                            finish();
+                                                                        }
+                                                                    })
+                                                                    .setCancelClickListener(new SweetAlertDialog.OnSweetClickListener() {
+                                                                        @Override
+                                                                        public void onClick(SweetAlertDialog sweetAlertDialog) {
+                                                                            mAuth.signOut();
+                                                                            sweetAlertDialog.dismissWithAnimation();
+                                                                        }
+                                                                    })
+                                                                    .show();
+                                                        } else {
+                                                            mAuth.signOut();
+                                                            new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.ERROR_TYPE)
+                                                                    .setTitleText("Please upgrade your account!")
+                                                                    .setContentText("You only can login with this account for " + cekuser.tipe + " device")
+                                                                    .show();
+                                                        }
                                                     }
                                                 }
-
-                                                @Override
-                                                public void onCancelled(DatabaseError databaseError) {
-
-                                                }
                                             });
-                                            //showProgress(false);
-
                                         }
-                                    }
-
-                                    @Override
-                                    public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-                                    }
-
-                                    @Override
-                                    public void onChildRemoved(DataSnapshot dataSnapshot) {
-
-                                    }
-
-                                    @Override
-                                    public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-                                    }
-
-                                    @Override
-                                    public void onCancelled(DatabaseError databaseError) {
-
                                     }
                                 });
                             } else {
                                 // If sign in fails, display a message to the user.
                                 Log.w(TAG, "signInWithEmail:failure", task.getException());
                             }
-
-                            // ...
                         }
                     }).addOnFailureListener(new OnFailureListener() {
                 @Override
                 public void onFailure(@NonNull Exception e) {
-                    //showProgress(false);
                     prosses_login.dismissWithAnimation();
                     if (e instanceof FirebaseAuthInvalidUserException) {
                         Toast.makeText(LoginActivity.this, "This User Not Found , Create A New Account", Toast.LENGTH_SHORT).show();
