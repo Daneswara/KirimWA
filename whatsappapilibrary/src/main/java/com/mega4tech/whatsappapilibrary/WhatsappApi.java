@@ -208,13 +208,14 @@ public class WhatsappApi {
                     Shell.SU.run("am force-stop com.whatsapp");
                     db = SQLiteDatabase.openOrCreateDatabase(new File("/data/data/com.whatsapp/databases/wa.db"), null);
                     List<WContact> contactList = new LinkedList<>();
-                    String selectQuery = "SELECT  jid, display_name, photo_ts FROM wa_contacts where phone_type is not null and is_whatsapp_user = 1";
+                    String selectQuery = "SELECT  jid, display_name, raw_contact_id FROM wa_contacts where phone_type is not null and is_whatsapp_user = 1";
                     Cursor cursor = db.rawQuery(selectQuery, null);
                     if (cursor.moveToFirst()) {
                         do {
-                            WContact contact = new WContact(cursor.getString(1), cursor.getString(0));
-                            System.out.println("0:"+cursor.getString(0));
-                            System.out.println("1:"+cursor.getString(1));
+                            WContact contact = new WContact(cursor.getString(1), cursor.getString(0), cursor.getString(2));
+//                            System.out.println("0:"+cursor.getString(0));
+//                            System.out.println("1:"+cursor.getString(1));
+//                            System.out.println("id:"+cursor.getString(2));
                             contactList.add(contact);
                         } while (cursor.moveToNext());
                     }

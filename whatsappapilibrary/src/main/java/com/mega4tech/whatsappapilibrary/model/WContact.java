@@ -8,10 +8,12 @@ public class WContact {
 
     String name;
     String id;
+    public String raw_id;
 
-    public WContact(String name, String id) {
+    public WContact(String name, String id, String raw_id) {
         this.name = name;
         this.id = id;
+        this.raw_id = raw_id;
 
 
         if(!id.endsWith("@s.whatsapp.net"))

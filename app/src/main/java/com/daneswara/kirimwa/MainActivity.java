@@ -1,8 +1,11 @@
 package com.daneswara.kirimwa;
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
@@ -23,6 +26,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.daneswara.kirimwa.adapter.AdapterKontak;
+import com.daneswara.kirimwa.object.Grup;
 import com.daneswara.kirimwa.object.Kontak;
 import com.daneswara.kirimwa.object.StatusUser;
 import com.daneswara.kirimwa.tools.ExpandableHeightGridView;
@@ -65,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
     String nama[];
     int foto[];
     private FirebaseAuth mAuth;
-//    private DatabaseReference mDatabase;
+    //    private DatabaseReference mDatabase;
     private FirebaseFirestore db;
     private String uid_user;
     List<Kontak> datakontak;
@@ -131,9 +135,9 @@ public class MainActivity extends AppCompatActivity {
             startActivity(keluar);
             finish();
         } else {
-            TelephonyManager telephonyManager = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+            TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
             id_device = telephonyManager.getDeviceId();
-            if(id_device == null){
+            if (id_device == null) {
                 Toast.makeText(MainActivity.this, "ID Device is empty", Toast.LENGTH_SHORT).show();
                 Intent keluar = new Intent(MainActivity.this, LoginActivity.class);
                 startActivity(keluar);
@@ -160,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     if (documentSnapshot != null && documentSnapshot.exists()) {
-                        sub.setChecked((boolean)documentSnapshot.getData().get("campaign"));
+                        sub.setChecked((boolean) documentSnapshot.getData().get("campaign"));
                     } else {
                         Log.d(TAG, "Current data: null");
                     }
@@ -169,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
             db.collection("message").document(id_device).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                 @Override
                 public void onSuccess(DocumentSnapshot documentSnapshot) {
-                    sub.setChecked((boolean)documentSnapshot.getData().get("campaign"));
+                    sub.setChecked((boolean) documentSnapshot.getData().get("campaign"));
                 }
             });
             final TextView sync_contact = findViewById(R.id.sync_contact);
@@ -183,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
 
                     if (documentSnapshot != null && documentSnapshot.exists()) {
                         CharSequence estimasi = DateUtils.getRelativeTimeSpanString((long) documentSnapshot.get("time"), Calendar.getInstance().getTimeInMillis(), 0);
-                        sync_contact.setText("Last Synced "+estimasi);
+                        sync_contact.setText("Last Synced " + estimasi);
                     } else {
                         Log.d(TAG, "Current data: null");
                     }
@@ -217,12 +221,13 @@ public class MainActivity extends AppCompatActivity {
                                 for (WContact contact : contacts) {
                                     String id = contact.getId().split("@")[0]; //+ ", " + contact.getId().split("@")[0];
                                     String nama = contact.getName();//+ ", " + contact.getId().split("@")[0];
+                                    String raw_id = getContactId(id);//+ ", " + contact.getId().split("@")[0];
                                     if (id != null && nama != null) {
-                                        writeNewKontak(id, nama);
+                                        writeNewKontak(id, nama, raw_id);
                                     }
                                     i++;
                                 }
-                                Map<String,Object> time = new HashMap<>();
+                                Map<String, Object> time = new HashMap<>();
 
                                 time.put("time", Calendar.getInstance().getTimeInMillis());
                                 db.collection("kontak").document(mAuth.getCurrentUser().getUid()).collection(id_device).document("sync").set(time).addOnFailureListener(new OnFailureListener() {
@@ -236,6 +241,27 @@ public class MainActivity extends AppCompatActivity {
                         });
                     } catch (Exception e) {
                         e.printStackTrace();
+                    }
+                    Cursor groupCursor = getContentResolver().query(
+                            ContactsContract.Groups.CONTENT_URI,
+                            new String[]{
+                                    ContactsContract.Groups._ID,
+                                    ContactsContract.Groups.TITLE
+                            }, null, null, null
+                    );
+                    groupCursor.moveToFirst();
+                    while (groupCursor.moveToNext()) //
+                    {
+                        String s0 = groupCursor.getString(0);                //contact_id
+                        String s1 = groupCursor.getString(1);                //contact_name
+                        Grup grup = new Grup(s0, s1);
+                        db.collection("grup").document(mAuth.getCurrentUser().getUid()).collection(id_device).document(s0).set(grup).addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                e.printStackTrace();
+                            }
+                        });
+                        Log.d("tag", "groupID: " + s0 + "title: " + s1);
                     }
                 }
             });
@@ -304,8 +330,10 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private void writeNewKontak(String nomer, String nama) {
-        Kontak user = new Kontak(nomer, nama);
+    private void writeNewKontak(String nomer, String nama, String id) {
+        Kontak user = new Kontak(nomer, nama, id, getGroupIdFor(id));
+//        System.out.println("idnya adalah "+id);
+//        System.out.println("group id nya adalah"+getGroupIdFor(id));
 //        StatusUser userstatus = new StatusUser(id_device);
         db.collection("kontak").document(mAuth.getCurrentUser().getUid()).collection(id_device).document(nomer).set(user, SetOptions.merge()).addOnFailureListener(new OnFailureListener() {
             @Override
@@ -319,8 +347,88 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void campaign(Boolean aktif) {
-        Map<String,Object> message = new HashMap<>();
+        Map<String, Object> message = new HashMap<>();
         message.put("campaign", aktif);
         db.collection("message").document(id_device).set(message);
+    }
+
+    public String getGroupIdFor(String contactId) {
+        Uri uri = ContactsContract.Data.CONTENT_URI;
+        String where = String.format(
+                "%s = ? AND %s = ?",
+                ContactsContract.Data.MIMETYPE,
+                ContactsContract.CommonDataKinds.GroupMembership.CONTACT_ID);
+
+        String[] whereParams = new String[]{
+                ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE,
+                contactId,
+        };
+
+        String[] selectColumns = new String[]{
+                ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID,
+        };
+
+
+        Cursor groupIdCursor = getContentResolver().query(
+                uri,
+                selectColumns,
+                where,
+                whereParams,
+                null);
+        try {
+            String idgrup = "";
+            if(groupIdCursor.moveToFirst()){
+                idgrup += groupIdCursor.getString(groupIdCursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID)) + ",";
+                while (groupIdCursor.moveToNext()) {
+                    idgrup += groupIdCursor.getString(groupIdCursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID)) + ",";
+                }
+            }
+
+            return idgrup;
+        } finally {
+            groupIdCursor.close();
+        }
+    }
+    private int cek = 0;
+    public String getContactId(String nomer) {
+        String contactid26 = null;
+//
+        ContentResolver contentResolver = getContentResolver();
+
+        Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode("+" + nomer));
+
+        Cursor cursor =
+                contentResolver.query(
+                        uri,
+                        new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME, ContactsContract.PhoneLookup._ID},
+                        null,
+                        null,
+                        null);
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                String contactName = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME));
+                contactid26 = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup._ID));
+
+            }
+            cursor.close();
+        }
+        if (contactid26 == null) {
+            Log.d("tag", "No contact found associated with this number");
+//            Toast.makeText(Coba.this, "No contact found associated with this number", Toast.LENGTH_SHORT).show();
+            if(cek == 0){
+                cek++;
+                return getGroupIdFor(nomer.replaceFirst("62", "0"));
+            } else {
+                return "";
+            }
+        } else {
+//            Log.d("tag", "No contact found associated with this number");
+            return contactid26;
+//            Intent intent_contacts = new Intent(Intent.ACTION_VIEW, Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, String.valueOf(contactid26)));
+//            //Intent intent_contacts = new Intent(Intent.ACTION_VIEW, Uri.parse("content://contacts/people/" + contactid26));
+//            startActivity(intent_contacts);
+        }
+
     }
 }

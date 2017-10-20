@@ -10,23 +10,19 @@ import java.util.Calendar;
  */
 
 @IgnoreExtraProperties
-public class Kontak {
+public class Grup {
 
     public String id;
-    public String nama;
-    public String nomer;
-    public String grup;
+    public String title;
     public String tanggal_dibuat;
 
-    public Kontak() {
+    public Grup() {
         // Default constructor required for calls to DataSnapshot.getValue(User.class)
     }
 
-    public Kontak(String nomer, String nama, String id, String grup) {
+    public Grup(String id, String title) {
         this.id = id;
-        this.nomer = nomer;
-        this.nama = nama;
-        this.grup = grup;
+        this.title = title;
         this.tanggal_dibuat = new SimpleDateFormat("dd-MM-yyyy").format(Calendar.getInstance().getTime());
     }
 

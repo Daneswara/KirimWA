@@ -77,7 +77,7 @@ public class Home extends AppCompatActivity {
                 }
                 String telp = tujuan.getText().toString()+"@s.whatsapp.net";
 
-                WContact contact = new WContact("Tamu", telp);
+                WContact contact = new WContact("Tamu", telp, "1");
                 mReceivers.add(contact);
                 System.out.println("id:"+contact.getId());
                 System.out.println("name:"+contact.getName());
