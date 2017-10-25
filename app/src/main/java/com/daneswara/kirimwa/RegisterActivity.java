@@ -284,20 +284,22 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
                                     }
                                 });
                                 String token = FirebaseInstanceId.getInstance().getToken();
-                                db.collection("users").document(user.getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
-                                    @Override
-                                    public void onFailure(@NonNull Exception e) {
-                                        e.printStackTrace();
-                                    }
-                                });
                                 Map<String,Object> message = new HashMap<>();
                                 message.put("campaign", true);
-                                db.collection("message").document(id_device).set(message).addOnFailureListener(new OnFailureListener() {
+                                message.put("uid", user.getUid());
+                                db.collection("device").document(token).set(message).addOnFailureListener(new OnFailureListener() {
                                     @Override
                                     public void onFailure(@NonNull Exception e) {
                                         e.printStackTrace();
                                     }
                                 });
+//                                db.collection("users").document(user.getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
+//                                    @Override
+//                                    public void onFailure(@NonNull Exception e) {
+//                                        e.printStackTrace();
+//                                    }
+//                                });
+
                                 FirebaseMessaging.getInstance().subscribeToTopic("news");
                                 Intent masuk = new Intent(RegisterActivity.this, MainActivity.class);
                                 startActivity(masuk);

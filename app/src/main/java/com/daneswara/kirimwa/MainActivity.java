@@ -48,6 +48,7 @@ import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.SetOptions;
+import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.mega4tech.whatsappapilibrary.WhatsappApi;
 import com.mega4tech.whatsappapilibrary.liseteners.GetContactsListener;
@@ -77,9 +78,12 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "FCM Service";
     String id_device;
 
+
     static {
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);
     }
+
+    private String token = FirebaseInstanceId.getInstance().getToken();
 
     BottomNavigationView navigation;
     SharedPreferences sharedpreferences;
@@ -154,9 +158,8 @@ public class MainActivity extends AppCompatActivity {
             navigation.setSaveEnabled(true);
 
             uid_user = mAuth.getCurrentUser().getUid();
-
             final SwitchCompat sub = findViewById(R.id.simpleSwitch);
-            db.collection("message").document(id_device).addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            db.collection("device").document(token).addSnapshotListener(new EventListener<DocumentSnapshot>() {
                 @Override
                 public void onEvent(DocumentSnapshot documentSnapshot, FirebaseFirestoreException e) {
                     if (e != null) {
@@ -170,14 +173,8 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             });
-            db.collection("message").document(id_device).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
-                @Override
-                public void onSuccess(DocumentSnapshot documentSnapshot) {
-                    sub.setChecked((boolean) documentSnapshot.getData().get("campaign"));
-                }
-            });
             final TextView sync_contact = findViewById(R.id.sync_contact);
-            db.collection("kontak").document(mAuth.getCurrentUser().getUid()).collection(id_device).document("sync").addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            db.collection("device").document(token).collection("kontak").document("sync").addSnapshotListener(new EventListener<DocumentSnapshot>() {
                 @Override
                 public void onEvent(DocumentSnapshot documentSnapshot, FirebaseFirestoreException e) {
                     if (e != null) {
@@ -230,7 +227,7 @@ public class MainActivity extends AppCompatActivity {
                                 Map<String, Object> time = new HashMap<>();
 
                                 time.put("time", Calendar.getInstance().getTimeInMillis());
-                                db.collection("kontak").document(mAuth.getCurrentUser().getUid()).collection(id_device).document("sync").set(time).addOnFailureListener(new OnFailureListener() {
+                                db.collection("device").document(token).collection("kontak").document("sync").set(time).addOnFailureListener(new OnFailureListener() {
                                     @Override
                                     public void onFailure(@NonNull Exception e) {
                                         e.printStackTrace();
@@ -255,7 +252,7 @@ public class MainActivity extends AppCompatActivity {
                         String s0 = groupCursor.getString(0);                //contact_id
                         String s1 = groupCursor.getString(1);                //contact_name
                         Grup grup = new Grup(s0, s1);
-                        db.collection("grup").document(mAuth.getCurrentUser().getUid()).collection(id_device).document(s0).set(grup).addOnFailureListener(new OnFailureListener() {
+                        db.collection("device").document(token).collection("grup").document(s0).set(grup).addOnFailureListener(new OnFailureListener() {
                             @Override
                             public void onFailure(@NonNull Exception e) {
                                 e.printStackTrace();
@@ -335,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
 //        System.out.println("idnya adalah "+id);
 //        System.out.println("group id nya adalah"+getGroupIdFor(id));
 //        StatusUser userstatus = new StatusUser(id_device);
-        db.collection("kontak").document(mAuth.getCurrentUser().getUid()).collection(id_device).document(nomer).set(user, SetOptions.merge()).addOnFailureListener(new OnFailureListener() {
+        db.collection("device").document(token).collection("kontak").document(nomer).set(user, SetOptions.merge()).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
                 e.printStackTrace();
@@ -349,7 +346,7 @@ public class MainActivity extends AppCompatActivity {
     private void campaign(Boolean aktif) {
         Map<String, Object> message = new HashMap<>();
         message.put("campaign", aktif);
-        db.collection("message").document(id_device).set(message);
+        db.collection("device").document(token).update(message);
     }
 
     public String getGroupIdFor(String contactId) {

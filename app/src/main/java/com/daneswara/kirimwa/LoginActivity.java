@@ -224,7 +224,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                             db.collection("users").document(mAuth.getCurrentUser().getUid()).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                                 @Override
                                 public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                                    if(!task.getResult().exists()){
+                                    final String token = FirebaseInstanceId.getInstance().getToken();
+                                    if (!task.getResult().exists()) {
                                         User newuser = new User(mAuth.getCurrentUser().getEmail(), 1);
                                         db.collection("users").document(mAuth.getCurrentUser().getUid()).set(newuser).addOnFailureListener(new OnFailureListener() {
                                             @Override
@@ -232,16 +233,10 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                                 e.printStackTrace();
                                             }
                                         });
-                                        String token = FirebaseInstanceId.getInstance().getToken();
-                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
-                                            @Override
-                                            public void onFailure(@NonNull Exception e) {
-                                                e.printStackTrace();
-                                            }
-                                        });
-                                        Map<String,Object> message = new HashMap<>();
+                                        Map<String, Object> message = new HashMap<>();
                                         message.put("campaign", true);
-                                        db.collection("message").document(id_device).set(message).addOnFailureListener(new OnFailureListener() {
+                                        message.put("uid", mAuth.getCurrentUser().getUid());
+                                        db.collection("device").document(token).set(message).addOnFailureListener(new OnFailureListener() {
                                             @Override
                                             public void onFailure(@NonNull Exception e) {
                                                 e.printStackTrace();
@@ -254,22 +249,21 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                         finish();
                                     } else {
                                         final User cekuser = task.getResult().toObject(User.class);
-
-                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                                        db.collection("device").whereEqualTo("uid", mAuth.getCurrentUser().getUid()).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                                             @Override
                                             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                                                 boolean cek = true;
-                                                for (DocumentSnapshot document : task.getResult()){
-                                                    Device dev = document.toObject(Device.class);
-                                                    if(dev.id_device.equals(id_device)){
+                                                for (DocumentSnapshot document : task.getResult()) {
+                                                    if(document.getId().equals(token)){
+                                                    //Device dev = document.toObject(Device.class);
+                                                    //if (dev.id_device.equals(id_device)) {
                                                         cek = false;
-                                                        String token = FirebaseInstanceId.getInstance().getToken();
-                                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
-                                                            @Override
-                                                            public void onFailure(@NonNull Exception e) {
-                                                                e.printStackTrace();
-                                                            }
-                                                        });
+//                                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
+//                                                            @Override
+//                                                            public void onFailure(@NonNull Exception e) {
+//                                                                e.printStackTrace();
+//                                                            }
+//                                                        });
                                                         FirebaseMessaging.getInstance().subscribeToTopic("news");
                                                         Auth.GoogleSignInApi.signOut(mGoogleApiClient);
                                                         Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
@@ -287,16 +281,10 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                                                 .setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
                                                                     @Override
                                                                     public void onClick(SweetAlertDialog sDialog) {
-                                                                        String token = FirebaseInstanceId.getInstance().getToken();
-                                                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
-                                                                            @Override
-                                                                            public void onFailure(@NonNull Exception e) {
-                                                                                e.printStackTrace();
-                                                                            }
-                                                                        });
-                                                                        Map<String,Object> message = new HashMap<>();
+                                                                        Map<String, Object> message = new HashMap<>();
                                                                         message.put("campaign", true);
-                                                                        db.collection("message").document(id_device).set(message).addOnFailureListener(new OnFailureListener() {
+                                                                        message.put("uid", mAuth.getCurrentUser().getUid());
+                                                                        db.collection("device").document(token).set(message).addOnFailureListener(new OnFailureListener() {
                                                                             @Override
                                                                             public void onFailure(@NonNull Exception e) {
                                                                                 e.printStackTrace();
@@ -314,12 +302,14 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                                                     @Override
                                                                     public void onClick(SweetAlertDialog sweetAlertDialog) {
                                                                         mAuth.signOut();
+                                                                        Auth.GoogleSignInApi.signOut(mGoogleApiClient);
                                                                         sweetAlertDialog.dismissWithAnimation();
                                                                     }
                                                                 })
                                                                 .show();
                                                     } else {
                                                         mAuth.signOut();
+                                                        Auth.GoogleSignInApi.signOut(mGoogleApiClient);
                                                         new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.ERROR_TYPE)
                                                                 .setTitleText("Please upgrade your account!")
                                                                 .setContentText("You only can login with this account for " + cekuser.tipe + " device")
@@ -454,24 +444,48 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                 db.collection("users").document(mAuth.getCurrentUser().getUid()).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                                     @Override
                                     public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                                        if(task.getResult().exists()){
+                                        final String token = FirebaseInstanceId.getInstance().getToken();
+                                        if (!task.getResult().exists()) {
+                                            User newuser = new User(mAuth.getCurrentUser().getEmail(), 1);
+                                            db.collection("users").document(mAuth.getCurrentUser().getUid()).set(newuser).addOnFailureListener(new OnFailureListener() {
+                                                @Override
+                                                public void onFailure(@NonNull Exception e) {
+                                                    e.printStackTrace();
+                                                }
+                                            });
+                                            Map<String, Object> message = new HashMap<>();
+                                            message.put("campaign", true);
+                                            message.put("uid", mAuth.getCurrentUser().getUid());
+                                            db.collection("device").document(token).set(message).addOnFailureListener(new OnFailureListener() {
+                                                @Override
+                                                public void onFailure(@NonNull Exception e) {
+                                                    e.printStackTrace();
+                                                }
+                                            });
+                                            FirebaseMessaging.getInstance().subscribeToTopic("news");
+                                            Auth.GoogleSignInApi.signOut(mGoogleApiClient);
+                                            Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
+                                            startActivity(masuk);
+                                            finish();
+                                        } else {
                                             final User cekuser = task.getResult().toObject(User.class);
-                                            db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                                            db.collection("device").whereEqualTo("uid", mAuth.getCurrentUser().getUid()).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                                                 @Override
                                                 public void onComplete(@NonNull Task<QuerySnapshot> task) {
                                                     boolean cek = true;
-                                                    for (DocumentSnapshot document : task.getResult()){
-                                                        Device dev = document.toObject(Device.class);
-                                                        if(dev.id_device.equals(id_device)){
+                                                    for (DocumentSnapshot document : task.getResult()) {
+                                                        if(document.getId().equals(token)){
+                                                            //Device dev = document.toObject(Device.class);
+                                                            //if (dev.id_device.equals(id_device)) {
                                                             cek = false;
-                                                            String token = FirebaseInstanceId.getInstance().getToken();
-                                                            db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
-                                                                @Override
-                                                                public void onFailure(@NonNull Exception e) {
-                                                                    e.printStackTrace();
-                                                                }
-                                                            });
+//                                                        db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
+//                                                            @Override
+//                                                            public void onFailure(@NonNull Exception e) {
+//                                                                e.printStackTrace();
+//                                                            }
+//                                                        });
                                                             FirebaseMessaging.getInstance().subscribeToTopic("news");
+                                                            Auth.GoogleSignInApi.signOut(mGoogleApiClient);
                                                             Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
                                                             startActivity(masuk);
                                                             finish();
@@ -487,16 +501,10 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                                                     .setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
                                                                         @Override
                                                                         public void onClick(SweetAlertDialog sDialog) {
-                                                                            String token = FirebaseInstanceId.getInstance().getToken();
-                                                                            db.collection("users").document(mAuth.getCurrentUser().getUid()).collection("device").document(id_device).set(new Device(token, id_device)).addOnFailureListener(new OnFailureListener() {
-                                                                                @Override
-                                                                                public void onFailure(@NonNull Exception e) {
-                                                                                    e.printStackTrace();
-                                                                                }
-                                                                            });
-                                                                            Map<String,Object> message = new HashMap<>();
+                                                                            Map<String, Object> message = new HashMap<>();
                                                                             message.put("campaign", true);
-                                                                            db.collection("message").document(id_device).set(message).addOnFailureListener(new OnFailureListener() {
+                                                                            message.put("uid", mAuth.getCurrentUser().getUid());
+                                                                            db.collection("device").document(token).set(message).addOnFailureListener(new OnFailureListener() {
                                                                                 @Override
                                                                                 public void onFailure(@NonNull Exception e) {
                                                                                     e.printStackTrace();
@@ -504,6 +512,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                                                             });
                                                                             sDialog.dismissWithAnimation();
                                                                             FirebaseMessaging.getInstance().subscribeToTopic("news");
+                                                                            Auth.GoogleSignInApi.signOut(mGoogleApiClient);
                                                                             Intent masuk = new Intent(LoginActivity.this, MainActivity.class);
                                                                             startActivity(masuk);
                                                                             finish();
@@ -513,12 +522,14 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                                                         @Override
                                                                         public void onClick(SweetAlertDialog sweetAlertDialog) {
                                                                             mAuth.signOut();
+                                                                            Auth.GoogleSignInApi.signOut(mGoogleApiClient);
                                                                             sweetAlertDialog.dismissWithAnimation();
                                                                         }
                                                                     })
                                                                     .show();
                                                         } else {
                                                             mAuth.signOut();
+                                                            Auth.GoogleSignInApi.signOut(mGoogleApiClient);
                                                             new SweetAlertDialog(LoginActivity.this, SweetAlertDialog.ERROR_TYPE)
                                                                     .setTitleText("Please upgrade your account!")
                                                                     .setContentText("You only can login with this account for " + cekuser.tipe + " device")
