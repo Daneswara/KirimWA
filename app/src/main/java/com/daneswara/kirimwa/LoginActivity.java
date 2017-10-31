@@ -109,7 +109,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private static final int RC_SIGN_IN = 9001;
     private GoogleApiClient mGoogleApiClient;
 
-    String id_device;
+//    String id_device;
     int count_device = 0;
 
     @Override
@@ -128,11 +128,11 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             mEmailView = findViewById(R.id.email);
             populateAutoComplete();
 
-            TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-            id_device = telephonyManager.getDeviceId();
-            if (id_device == null) {
-                Toast.makeText(LoginActivity.this, "ID Device is empty, you can't login", Toast.LENGTH_SHORT).show();
-            }
+//            TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+//            id_device = telephonyManager.getDeviceId();
+//            if (id_device == null) {
+//                Toast.makeText(LoginActivity.this, "ID Device is empty, you can't login", Toast.LENGTH_SHORT).show();
+//            }
             mPasswordView = findViewById(R.id.password);
             mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                 @Override

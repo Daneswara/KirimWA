@@ -35,6 +35,7 @@ dependencies {
         transitive = true
     }
     compile project(':whatsappapilibrary')
+    compile project(':sweetalertdialog')
     compile 'com.google.firebase:firebase-firestore:11.4.2'
     compile 'com.android.support:appcompat-v7:26.0.1'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
@@ -48,7 +49,6 @@ dependencies {
     compile 'com.android.support:design:26.0.1'
     compile 'com.android.support:support-vector-drawable:26.0.1'
     compile 'com.amulyakhare:com.amulyakhare.textdrawable:1.0.1'
-    compile 'cn.pedant.sweetalert:library:1.3'
     compile 'com.wdullaer:materialdatetimepicker:3.3.1'
     compile 'com.android.support:multidex:1.0.1'
     compile 'com.android.support:support-v4:26.0.1'

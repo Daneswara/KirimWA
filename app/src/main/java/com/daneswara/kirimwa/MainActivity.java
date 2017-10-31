@@ -1,15 +1,21 @@
 package com.daneswara.kirimwa;
 
+import android.app.ActivityManager;
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SwitchCompat;
 import android.telephony.TelephonyManager;
@@ -18,8 +24,10 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -28,6 +36,7 @@ import android.widget.Toast;
 import com.daneswara.kirimwa.adapter.AdapterKontak;
 import com.daneswara.kirimwa.object.Grup;
 import com.daneswara.kirimwa.object.Kontak;
+import com.daneswara.kirimwa.object.Message;
 import com.daneswara.kirimwa.object.StatusUser;
 import com.daneswara.kirimwa.tools.ExpandableHeightGridView;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -42,19 +51,26 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.firestore.DocumentChange;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.mega4tech.whatsappapilibrary.WhatsappApi;
+import com.mega4tech.whatsappapilibrary.exception.WhatsappNotInstalledException;
 import com.mega4tech.whatsappapilibrary.liseteners.GetContactsListener;
+import com.mega4tech.whatsappapilibrary.liseteners.SendMessageListener;
 import com.mega4tech.whatsappapilibrary.model.WContact;
+import com.mega4tech.whatsappapilibrary.model.WMessage;
 
+import java.io.IOException;
 import java.security.Timestamp;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
@@ -67,6 +83,7 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
     private LinearLayout f2, f3;
+    private Intent mServiceIntent;
     String nama[];
     int foto[];
     private FirebaseAuth mAuth;
@@ -75,9 +92,11 @@ public class MainActivity extends AppCompatActivity {
     private String uid_user;
     List<Kontak> datakontak;
     ExpandableHeightGridView gridView;
+    private String riwayat;
     private static final String TAG = "FCM Service";
-    String id_device;
-
+    //    private ArrayAdapter<String> list;
+    //String id_device;
+    private TextView list_message;
 
     static {
         FirebaseDatabase.getInstance().setPersistenceEnabled(true);
@@ -99,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
                     f3.setVisibility(View.GONE);
                     mOption.clear();
                     getMenuInflater().inflate(R.menu.menu_bot, mOption);
-                    setTitle("Campaign");
+                    setTitle("Message");
                     editor.putInt("menu", 2);
                     editor.commit();
                     return true;
@@ -139,14 +158,24 @@ public class MainActivity extends AppCompatActivity {
             startActivity(keluar);
             finish();
         } else {
-            TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-            id_device = telephonyManager.getDeviceId();
-            if (id_device == null) {
-                Toast.makeText(MainActivity.this, "ID Device is empty", Toast.LENGTH_SHORT).show();
-                Intent keluar = new Intent(MainActivity.this, LoginActivity.class);
-                startActivity(keluar);
-                finish();
-            }
+//            TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+//            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+//                // TODO: Consider calling
+//                //    ActivityCompat#requestPermissions
+//                // here to request the missing permissions, and then overriding
+//                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+//                //                                          int[] grantResults)
+//                // to handle the case where the user grants the permission. See the documentation
+//                // for ActivityCompat#requestPermissions for more details.
+//                return;
+//            }
+//            id_device = telephonyManager.getDeviceId();
+//            if (id_device == null) {
+//                Toast.makeText(MainActivity.this, "ID Device is empty", Toast.LENGTH_SHORT).show();
+//                Intent keluar = new Intent(MainActivity.this, LoginActivity.class);
+//                startActivity(keluar);
+//                finish();
+//            }
             setContentView(R.layout.activity_main);
             setTitle("Kontak");
 //            fl = findViewById(R.id.kontak);
@@ -156,6 +185,9 @@ public class MainActivity extends AppCompatActivity {
             navigation = findViewById(R.id.navigation);
             navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
             navigation.setSaveEnabled(true);
+
+            list_message = findViewById(R.id.message);
+
 
             uid_user = mAuth.getCurrentUser().getUid();
             final SwitchCompat sub = findViewById(R.id.simpleSwitch);
@@ -168,8 +200,20 @@ public class MainActivity extends AppCompatActivity {
 
                     if (documentSnapshot != null && documentSnapshot.exists()) {
                         sub.setChecked((boolean) documentSnapshot.getData().get("campaign"));
+                        list_message.setText(documentSnapshot.getData().get("log")+"");
                     } else {
                         Log.d(TAG, "Current data: null");
+                    }
+                }
+            });
+            mServiceIntent = new Intent(MainActivity.this, MessageService.class);
+            db.collection("device").document(token).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                @Override
+                public void onSuccess(DocumentSnapshot documentSnapshot) {
+                    if((boolean)documentSnapshot.getData().get("campaign") && !isMyServiceRunning(MessageService.class)){
+                        startService(mServiceIntent);
+                    } else if(!(boolean) documentSnapshot.getData().get("campaign") && isMyServiceRunning(MessageService.class)){
+                        stopService(mServiceIntent);
                     }
                 }
             });
@@ -195,11 +239,17 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     if (sub.isChecked()) {
+                        if(!isMyServiceRunning(MessageService.class)) {
+                            startService(mServiceIntent);
+                        }
                         campaign(true);
                         Log.d(TAG, "Campaign Activated");
                         Toast.makeText(MainActivity.this, "Campaign Activated", Toast.LENGTH_SHORT).show();
                     } else {
                         campaign(false);
+                        if(isMyServiceRunning(MessageService.class)){
+                            stopService(mServiceIntent);
+                        }
                         Toast.makeText(MainActivity.this, "Campaign Unactivated", Toast.LENGTH_SHORT).show();
                         Log.d(TAG, "Campaign Unactivated");
                     }
@@ -307,11 +357,17 @@ public class MainActivity extends AppCompatActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_item_tambah_bot) {
-            Intent bot = new Intent(MainActivity.this, DetailBot.class);
-            startActivity(bot);
+//            Intent bot = new Intent(MainActivity.this, DetailBot.class);
+//            startActivity(bot);
+
+            Message pesan = new Message("6285730595101", "Tes " + Calendar.getInstance().getTimeInMillis(), "wait");
+            db.collection("device").document(token).collection("message").add(pesan);
             // Do something
             return true;
         } else if (id == R.id.action_item_logout) {
+            if(isMyServiceRunning(MessageService.class)){
+                stopService(mServiceIntent);
+            }
             mAuth.signOut();
             FirebaseMessaging.getInstance().unsubscribeFromTopic("news");
             SharedPreferences.Editor editor = sharedpreferences.edit();
@@ -374,7 +430,7 @@ public class MainActivity extends AppCompatActivity {
                 null);
         try {
             String idgrup = "";
-            if(groupIdCursor.moveToFirst()){
+            if (groupIdCursor.moveToFirst()) {
                 idgrup += groupIdCursor.getString(groupIdCursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID)) + ",";
                 while (groupIdCursor.moveToNext()) {
                     idgrup += groupIdCursor.getString(groupIdCursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID)) + ",";
@@ -386,7 +442,9 @@ public class MainActivity extends AppCompatActivity {
             groupIdCursor.close();
         }
     }
+
     private int cek = 0;
+
     public String getContactId(String nomer) {
         String contactid26 = null;
 //
@@ -413,7 +471,7 @@ public class MainActivity extends AppCompatActivity {
         if (contactid26 == null) {
             Log.d("tag", "No contact found associated with this number");
 //            Toast.makeText(Coba.this, "No contact found associated with this number", Toast.LENGTH_SHORT).show();
-            if(cek == 0){
+            if (cek == 0) {
                 cek++;
                 return getGroupIdFor(nomer.replaceFirst("62", "0"));
             } else {
@@ -428,4 +486,15 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
 }

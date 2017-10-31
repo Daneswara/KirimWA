@@ -12,17 +12,18 @@ import java.util.Calendar;
 @IgnoreExtraProperties
 public class Message {
 
-    public String id;
+//    public String id;
     public String number;
     public String message;
     public String time;
+    public String status;
 
     public Message() {
         // Default constructor required for calls to DataSnapshot.getValue(User.class)
     }
 
-    public Message(String id, String number, String message) {
-        this.id = id;
+    public Message(String number, String message, String status) {
+        this.status = status;
         this.number = number;
         this.message = message;
         this.time = Calendar.getInstance().getTimeInMillis()+"";

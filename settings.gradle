@@ -1,1 +1,1 @@
-include ':app', ':whatsappapilibrary'
+include ':app', ':whatsappapilibrary', ':sweetalertdialog'
